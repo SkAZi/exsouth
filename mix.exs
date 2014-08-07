@@ -26,7 +26,7 @@ defmodule Exsouth.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:sqlex, git: "git@git.appforge.ru:elixir/sqlex.git"},
+      {:sqlex, git: "git@git.appforge.ru:elixir/sqlex.git", branch: "develop"},
     ]
   end
 end
