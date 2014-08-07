@@ -22,6 +22,10 @@ defmodule ExSouth do
     Application.get_env :exsouth, :dir, "database"
   end
 
+  def table_name() do
+    Application.get_env :exsouth, :table_name, "update_versions"
+  end
+
   def get_execute_result({:ok_packet, _,_,_,_,_,_}), do: true
   def get_execute_result({:error_packet, _, _, _, message}) do 
     IO.puts "#{message}"
@@ -38,18 +42,18 @@ defmodule ExSouth do
   end
 
   def install_south_db() do
-        SQL.query("CREATE TABLE IF NOT EXISTS update_versions 
+        SQL.query("CREATE TABLE IF NOT EXISTS #{table_name()} 
             (id VARCHAR(4) PRIMARY KEY, name VARCHAR(255)) ENGINE=InnoDB", [])
             |> SQL.execute
   end
 
   def bump_version_south_db(ver, name) do
-        SQL.query("INSERT update_versions (id,name) VALUES (?,?);", [ver, name])
+        SQL.query("INSERT #{table_name()} (id,name) VALUES (?,?);", [ver, name])
             |> SQL.execute
   end
 
   def get_current_south_db() do
-      case SQL.run("SELECT id FROM update_versions ORDER BY id DESC LIMIT 1", []) do
+      case SQL.run("SELECT id FROM #{table_name()} ORDER BY id DESC LIMIT 1", []) do
           {:error, _} -> nil
           [] -> ""
           [[{:id, ver}]] -> ver
@@ -57,7 +61,7 @@ defmodule ExSouth do
   end
 
   def get_versions_south_db() do
-      case SQL.run("SELECT id,name FROM update_versions ORDER BY id ASC", []) do
+      case SQL.run("SELECT id,name FROM #{table_name()} ORDER BY id ASC", []) do
           {:error, _} -> nil
           [] -> nil
           list -> list
@@ -65,6 +69,6 @@ defmodule ExSouth do
   end
 
   def drop_south_db() do
-      SQL.execute("DROP TABLE IF EXISTS update_versions")
+      SQL.execute("DROP TABLE IF EXISTS #{table_name()}")
   end
 end
