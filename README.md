@@ -16,9 +16,9 @@ config :app_name,
 Commands:
 
 ```
-mix db.install [project]
-mix db.repair  [project] [ver]
-mix db.ver     [project]
-mix db.drop    [project]
-mix db.update  [project] ver
+mix db.install [project|all]
+mix db.repair  [project|all] [ver]
+mix db.ver     [project|all]
+mix db.drop    [project|all]
+mix db.update  [project|all] ver
 ```

@@ -2,8 +2,15 @@ defmodule Mix.Tasks.Db.Repair do
     use Mix.Task
     @shortdoc "Устанавливает версию базы дынных без внесения изменений"
 
+    def run(["all", ver]) do
+        ExSouth.get_all_projects() 
+        |> Enum.each fn(project)->
+            run([project, ver])
+        end
+    end
+
     def run([project, ver]) do
-        IO.put "Repairing #{project} to #{ver}..."
+        IO.puts "Repairing #{project} to #{ver}..."
         project = ExSouth.project_from_name(project)
 
         ExSouth.init_pool(project)
@@ -13,7 +20,7 @@ defmodule Mix.Tasks.Db.Repair do
 
         File.ls!("./#{ExSouth.dir(project)}/") 
             |> Enum.sort
-            |> Enum.find fn(name)->
+            |> Enum.each fn(name)->
                 [iver, uname] = String.split(name, "_", parts: 2)
                 uname = String.split(uname, ".", parts: 2) |> List.first
                 if iver <= ver and iver != "9999" do
@@ -42,11 +49,7 @@ defmodule Mix.Tasks.Db.Repair do
             :ver -> 
                 case ExSouth.user_input("Do you wish to repair all projects to version #{arg}?", [yes: :yes, no: :no, default: :no]) do
                     :no -> nil
-                    :yes ->
-                        ExSouth.get_all_projects() 
-                        |> Enum.each fn(project)->
-                            run([project, arg])
-                        end
+                    :yes -> run(["all", arg])
                 end
         end
     end
@@ -54,11 +57,7 @@ defmodule Mix.Tasks.Db.Repair do
     def run(_) do
         case ExSouth.user_input("Do you wish to repair every project to version 0000?", [yes: :yes, no: :no, default: :no]) do
             :no -> nil
-            :yes ->
-                ExSouth.get_all_projects() 
-                |> Enum.each fn(project)->
-                    run([project])
-                end
+            :yes -> run(["all", "0000"])
         end
     end
 end
@@ -68,6 +67,13 @@ defmodule Mix.Tasks.Db.Install do
     use Mix.Task
 
     @shortdoc "Устанавливает базу данных"
+
+    def run(["all"]) do
+        ExSouth.get_all_projects() 
+        |> Enum.each fn(project)->
+            run([project])
+        end
+    end
 
     def run([project]) do
         project = ExSouth.project_from_name(project)
@@ -91,11 +97,7 @@ defmodule Mix.Tasks.Db.Install do
     def run(_) do
         case ExSouth.user_input("Do you wish to install DB for every project?", [yes: :yes, no: :no, default: :no]) do
             :no -> nil
-            :yes ->
-                ExSouth.get_all_projects() 
-                |> Enum.each fn(project)->
-                    run([project])
-                end
+            :yes -> run(["all"])
         end
     end
 
@@ -106,6 +108,15 @@ defmodule Mix.Tasks.Db.Update do
     use Mix.Task
 
     @shortdoc "Обновляет базу данных"
+
+    def run(["all"]), do: run([])
+
+    def run(["all", ver]) do
+        ExSouth.get_all_projects() 
+        |> Enum.each fn(project)->
+            run([project, ver])
+        end
+    end
 
     def run([project, ver]) do
         filename = File.ls!("./#{ExSouth.dir(project)}/") 
@@ -161,11 +172,7 @@ defmodule Mix.Tasks.Db.Update do
     def run([ver]) do
         case ExSouth.user_input("Do you wish to update DB for every project to v.#{ver}?", [yes: :yes, no: :no, default: :no]) do
             :no -> nil
-            :yes ->
-                ExSouth.get_all_projects() 
-                |> Enum.each fn(project)->
-                    run([project, ver])
-                end
+            :yes -> run(["all", ver])
         end        
     end
 
@@ -179,6 +186,8 @@ defmodule Mix.Tasks.Db.Ver do
     use Mix.Task
 
     @shortdoc "Выводит состояние базы данных"
+
+    def run(["all"]), do: run([])
 
     def run([project]) do
         IO.puts "DB for project #{project}..."
@@ -222,9 +231,8 @@ defmodule Mix.Tasks.Db.Drop do
 
     @shortdoc "Удаляет базу данных"
 
-    @moduledoc """
-    A test task.
-    """
+    def run("all"), do: run([])
+
     def run([project]) do
         project = ExSouth.project_from_name(project)
 

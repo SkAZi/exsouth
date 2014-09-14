@@ -46,6 +46,7 @@ defmodule ExSouth do
         def get_all_projects() do
             Application.get_all_env(:exsouth)
             |> Keyword.delete(:included_applications)
+            |> Keyword.keys
         end
 
         def init_pool(project) do
@@ -98,18 +99,16 @@ defmodule ExSouth do
         end
 
         def install_south_db(project) do
-            SQL.query("CREATE TABLE IF NOT EXISTS #{table_name(project)} 
+            SQL.execute("CREATE TABLE IF NOT EXISTS #{table_name(project)} 
                 (id VARCHAR(4), project VARCHAR(255), name VARCHAR(255), PRIMARY KEY(project, id)) ENGINE=InnoDB", [], project)
-            |> SQL.execute
         end
 
         def bump_version_south_db(project, ver, name) do
-            SQL.query("INSERT #{table_name(project)} (id,project,name) VALUES (?,?,?);", [ver, project, name], project)
-            |> SQL.execute
+            SQL.execute("INSERT #{table_name(project)} (id,project,name) VALUES (?,?,?);", [ver, Atom.to_string(project), name], project)
         end
 
         def get_current_south_db(project) do
-          case SQL.run("SELECT id FROM #{table_name(project)} WHERE project=? ORDER BY id DESC LIMIT 1", [project], project) do
+          case SQL.run("SELECT id FROM #{table_name(project)} WHERE project=? ORDER BY id DESC LIMIT 1", [Atom.to_string(project)], project) do
               {:error, _} -> nil
               [] -> ""
               [[{:id, ver}]] -> ver
@@ -125,6 +124,6 @@ defmodule ExSouth do
       end
 
       def drop_south_db(project) do
-          SQL.execute("DROP TABLE IF EXISTS #{table_name(project)}")
+          SQL.execute("DROP TABLE IF EXISTS #{table_name(project)}", [], project)
       end
   end
