@@ -1,170 +1,253 @@
 defmodule Mix.Tasks.Db.Repair do
-    
-    def run([ver]) do
-        ExSouth.init_pool()
+    use Mix.Task
+    @shortdoc "Устанавливает версию базы дынных без внесения изменений"
+
+    def run([project, ver]) do
+        IO.put "Repairing #{project} to #{ver}..."
+        project = ExSouth.project_from_name(project)
+
+        ExSouth.init_pool(project)
         
-        ExSouth.drop_south_db()
-        ExSouth.install_south_db()
-                
-        File.ls!("./#{ExSouth.dir}/") 
+        ExSouth.drop_south_db(project)
+        ExSouth.install_south_db(project)
+
+        File.ls!("./#{ExSouth.dir(project)}/") 
             |> Enum.sort
             |> Enum.find fn(name)->
                 [iver, uname] = String.split(name, "_", parts: 2)
                 uname = String.split(uname, ".", parts: 2) |> List.first
                 if iver <= ver and iver != "9999" do
-                    ExSouth.bump_version_south_db(iver, uname)
+                    ExSouth.bump_version_south_db(project, iver, uname)
                 end
             end
     end
 
-    def run(_) do
-        ExSouth.init_pool()
-        ExSouth.drop_south_db()
-        ExSouth.install_south_db()
-        ExSouth.bump_version_south_db("0000", "initial")
+    def run([arg]) do
+        operation = try do
+            _ = String.to_integer(arg)
+            :ver
+        rescue
+            _e in ArgumentError -> :project
+        end
+
+        case operation do
+            :project -> 
+                IO.put "Repairing #{arg} to 0000..."
+                project = ExSouth.project_from_name(arg)
+                ExSouth.init_pool(project)
+                ExSouth.drop_south_db(project)
+                ExSouth.install_south_db(project)
+                ExSouth.bump_version_south_db(project, "0000", "initial")
+
+            :ver -> 
+                case ExSouth.user_input("Do you wish to repair all projects to version #{arg}?", [yes: :yes, no: :no, default: :no]) do
+                    :no -> nil
+                    :yes ->
+                        ExSouth.get_all_projects() 
+                        |> Enum.each fn(project)->
+                            run([project, arg])
+                        end
+                end
+        end
     end
 
+    def run(_) do
+        case ExSouth.user_input("Do you wish to repair every project to version 0000?", [yes: :yes, no: :no, default: :no]) do
+            :no -> nil
+            :yes ->
+                ExSouth.get_all_projects() 
+                |> Enum.each fn(project)->
+                    run([project])
+                end
+        end
+    end
 end
 
 
 defmodule Mix.Tasks.Db.Install do
-  use Mix.Task
+    use Mix.Task
 
-  @shortdoc "Устанавливает базу данных"
+    @shortdoc "Устанавливает базу данных"
 
-  @moduledoc """
-  A test task.
-  """
-  def run(_) do
-    IO.puts "Installing DB..." 
-    ExSouth.init_pool()
-    is_ok = "./#{ExSouth.dir}/0000_init.sql" |> File.read! |> SQL.execute 
-        |> ExSouth.get_execute_result
+    def run([project]) do
+        project = ExSouth.project_from_name(project)
 
-    if is_ok do
-        ExSouth.install_south_db()
-        ExSouth.bump_version_south_db("0000", "initial")
-        IO.puts "DB installed."
-    else 
-        IO.puts "Errors in DB installation."
+        IO.puts "Installing DB for #{project}..." 
+        ExSouth.init_pool(project)
+        is_ok = "./#{ExSouth.dir(project)}/0000_init.sql" 
+        |> File.read! 
+        |> ExSouth.execute(project)
+        
+
+        if is_ok do
+            ExSouth.install_south_db(project)
+            ExSouth.bump_version_south_db(project, "0000", "initial")
+            IO.puts "DB for project #{project} installed."
+        else 
+            IO.puts "Errors in DB installation for project #{project}."
+        end
     end
-  end
+
+    def run(_) do
+        case ExSouth.user_input("Do you wish to install DB for every project?", [yes: :yes, no: :no, default: :no]) do
+            :no -> nil
+            :yes ->
+                ExSouth.get_all_projects() 
+                |> Enum.each fn(project)->
+                    run([project])
+                end
+        end
+    end
+
 end
 
 
 defmodule Mix.Tasks.Db.Update do
-  use Mix.Task
+    use Mix.Task
 
-  @shortdoc "Обновляет базу данных"
+    @shortdoc "Обновляет базу данных"
 
-  @moduledoc """
-  A test task.
-  """
-  def run([ver]) do
-    filename = File.ls!("./#{ExSouth.dir}/") 
-      |> Enum.find &(String.starts_with?(&1, "#{ver}_"))
+    def run([project, ver]) do
+        filename = File.ls!("./#{ExSouth.dir(project)}/") 
+            |> Enum.find &(String.starts_with?(&1, "#{ver}_"))
 
-    case File.exists?("./#{ExSouth.dir}/#{filename}") do
-      true when filename != nil -> 
-        ExSouth.init_pool()
+        case File.exists?("./#{ExSouth.dir(project)}/#{filename}") do
+            true when filename != nil -> 
+                ExSouth.init_pool(project)
 
-        cver = ExSouth.get_current_south_db()
+                cver = ExSouth.get_current_south_db(project)
 
-        cond do
-            cver == nil -> 
-                IO.puts "DB doesn't installed..."
-            cver >= ver -> 
-                IO.puts "Version allready installed..."
-            true -> 
-                IO.puts "Updating DB up to v.#{ver}..." 
+                cond do
+                    cver == nil -> 
+                        IO.puts "DB for project #{project} doesn't installed..."
 
-                is_failed = File.ls!("./#{ExSouth.dir}/") 
-                    |> Enum.sort
-                    |> Enum.any? fn(name)->
-                        [iver, uname] = String.split(name, "_", parts: 2)
-                        uname = String.split(uname, ".", parts: 2) |> List.first
-                        if iver > cver and iver <= ver and iver != "9999" do 
-                            is_ok = "./#{ExSouth.dir}/#{name}" |> File.read! |> SQL.execute 
-                                |> ExSouth.get_execute_result
+                    cver >= ver -> 
+                        IO.puts "Version for project #{project} allready installed..."
 
-                            if is_ok do
-                                ExSouth.bump_version_south_db(iver, uname)
-                                false
-                            else true end
-                        else false end
-                    end
+                    true -> 
+                        IO.puts "Updating DB for project #{project} up to v.#{ver}..." 
 
-                if is_failed do 
-                    IO.puts "Errors at updating DB..." 
-                else 
-                    IO.puts "DB is now v.#{ver}" 
+                        is_failed = File.ls!("./#{ExSouth.dir(project)}/") 
+                            |> Enum.sort
+                            |> Enum.any? fn(name)->
+                                [iver, uname] = String.split(name, "_", parts: 2)
+                                uname = String.split(uname, ".", parts: 2) |> List.first
+                                
+                                if iver > cver and iver <= ver and iver != "9999" do 
+                                    is_ok = "./#{ExSouth.dir(project)}/#{name}" 
+                                    |> File.read! 
+                                    |> ExSouth.execute(project)
+
+                                    if is_ok do
+                                        ExSouth.bump_version_south_db(project, iver, uname)
+                                        false
+                                    else true end
+                                else false end
+                            end
+
+                        if is_failed do 
+                            IO.puts "Errors at updating DB for project #{project}..." 
+                        else 
+                            IO.puts "DB for project #{project} is now v.#{ver}" 
+                        end
                 end
+
+            false -> 
+                IO.puts "Version for project #{project} is not found..."
+
         end
-
-      _ -> 
-        IO.puts "Version is not found..."
-
     end
-  end
 
-  def run(_) do
-    IO.puts "You must provide version number."
-  end
+    def run([ver]) do
+        case ExSouth.user_input("Do you wish to update DB for every project to v.#{ver}?", [yes: :yes, no: :no, default: :no]) do
+            :no -> nil
+            :yes ->
+                ExSouth.get_all_projects() 
+                |> Enum.each fn(project)->
+                    run([project, ver])
+                end
+        end        
+    end
+
+    def run(_) do
+        IO.puts "You must provide project and version number."
+    end
 end
 
 
 defmodule Mix.Tasks.Db.Ver do
-  use Mix.Task
+    use Mix.Task
 
-  @shortdoc "Обновляет базу данных"
+    @shortdoc "Выводит состояние базы данных"
 
-  @moduledoc """
-  A test task.
-  """
-  def run(_) do
-    ExSouth.init_pool()
+    def run([project]) do
+        IO.puts "DB for project #{project}..."
 
-    result = ExSouth.get_versions_south_db()
+        ExSouth.init_pool(project)
+        result = ExSouth.get_versions_south_db(project)
 
-    case result do
-        nil -> 
-            File.ls!("./#{ExSouth.dir}/") 
+        case result do
+            nil -> 
+                File.ls!("./#{ExSouth.dir(project)}/") 
                 |> Enum.each fn(name)->
                     ver = String.split(name, "_") |> List.first
                     if ver != "9999", do: IO.puts "( ) #{String.split(name, ".") |> List.first}"
                 end
 
-        vers -> 
-            cver = vers |> 
+            vers -> 
+                cver = vers |> 
                 Enum.map(fn([{:id, ver}, {:name, name}])-> IO.puts "(*) #{ver}_#{name}"; ver end)
-                    |> Enum.reverse |> List.first
+                |> Enum.reverse |> List.first
 
-            File.ls!("./#{ExSouth.dir}/") 
+                File.ls!("./#{ExSouth.dir(project)}/") 
                 |> Enum.each(fn(name)->
                     ver = String.split(name, "_") |> List.first
                     if ver > cver and ver != "9999", do: IO.puts "( ) #{String.split(name, ".") |> List.first}"
                 end)
+        end
     end
-  end
+
+    def run(_) do
+        ExSouth.get_all_projects() 
+        |> Enum.each fn(project)->
+            run([project])
+        end
+    end
 end
 
+
+
 defmodule Mix.Tasks.Db.Drop do
-  use Mix.Task
+    use Mix.Task
 
-  @shortdoc "Удаляет базу данных"
+    @shortdoc "Удаляет базу данных"
 
-  @moduledoc """
-  A test task.
-  """
-  def run(_) do
-    IO.puts "Dropping DB..."
-    ExSouth.init_pool()
+    @moduledoc """
+    A test task.
+    """
+    def run([project]) do
+        project = ExSouth.project_from_name(project)
 
-    "./#{ExSouth.dir}/9999_remove.sql" |> File.read! |> SQL.execute 
-        |> ExSouth.get_execute_result
+        IO.puts "Dropping DB for project #{project}..."
+        ExSouth.init_pool(project)
 
-    ExSouth.drop_south_db()
-    IO.puts "DB dropped."
-  end
+        "./#{ExSouth.dir(project)}/9999_remove.sql" 
+            |> File.read! 
+            |> ExSouth.execute(project)
+
+        ExSouth.drop_south_db(project)
+        IO.puts "DB for project #{project} dropped."
+    end
+
+    def run(_) do
+        case ExSouth.user_input("Do you wish to drop DB for every project?", [yes: :yes, no: :no, default: :no]) do
+            :no -> nil
+            :yes ->
+                ExSouth.get_all_projects() 
+                |> Enum.each fn(project)->
+                    run([project])
+                end
+        end
+    end
 
 end

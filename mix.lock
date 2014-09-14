@@ -1,4 +1,4 @@
-%{"decimal": {:git, "git://github.com/ericmj/decimal.git", "c79af3ba3af64caa510c3337091928cb17af480b", []},
+%{"decimal": {:git, "git://github.com/ericmj/decimal.git", "5d47511cfa4d9049c1a9581df7f804c989ec34c0", []},
   "emysql": {:git, "git://github.com/Eonblast/Emysql.git", "c7e2103f8b737667f0128802e8de2f0d5ed2fa5c", []},
   "inutils": {:git, "git@git.appforge.ru:elixir/inutils.git", "d21ba8ab1898fecb2ee5a48421711aa6ec119597", []},
   "sqlex": {:git, "git@git.appforge.ru:elixir/sqlex.git", "a6eb0f4562ba963b908457106570672382d87faf", [branch: "develop"]}}

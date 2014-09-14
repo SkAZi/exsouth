@@ -5,70 +5,126 @@ defmodule ExSouth do
         {:error, {:not_started, need_name}} -> 
             astart(need_name)
             astart(name)
-        {:error, {:already_started, _}} -> :ok
-        {:error, error} -> 
-            throw error
-    end
-  end
+            {:error, {:already_started, _}} -> :ok
+            {:error, error} -> 
+                throw error
+            end
+        end
 
-  def init_pool() do
-    :ok = ExSouth.astart(:emysql)
-    project = Application.get_env :exsouth, :project
-    mysql = Application.get_env :exsouth, :mysql, :mysql
-    SQL.init_pool Application.get_env project, mysql, []
-  end
+        def user_input(question, opts) do
+            ret = IO.gets "#{question} [#{Keyword.keys(Keyword.delete(opts, :default)) |> Enum.join(", ")}]: "
 
-  def dir() do
-    Application.get_env :exsouth, :dir, "database"
-  end
+            ret = try do
+                String.to_existing_atom(ret |> String.downcase |> String.rstrip(?\n))
+            rescue
+                _e in ArgumentError -> :default
+            end
 
-  def table_name() do
-    Application.get_env :exsouth, :table_name, "update_versions"
-  end
+            case opts[ret] do
+                nil -> 
+                    IO.puts "Hm, what?"
+                    user_input(question, opts)
+                answer -> answer
+            end
+        end
 
-  def get_execute_result({:ok_packet, _,_,_,_,_,_}), do: true
-  def get_execute_result({:error_packet, _, _, _, message}) do 
-    IO.puts "#{message}"
-    false
-  end
+        def project_from_name(name) when is_atom(name), do: name
+        def project_from_name(name) do
+            try do
+                String.to_existing_atom(name)
+            rescue
+                _e in ArgumentError ->
+                    raise "No ExSouth settings for project #{name} found"
+            end
+        end
 
-  def get_execute_result(list) do
-    Enum.all? list, 
-        fn({:ok_packet, _,_,_,_,_,_}) -> true;
-          ({:error_packet, _, _, _, message}) -> 
-            IO.puts "#{message}" 
+        def get_settings(project) do
+            Application.get_all_env(:exsouth)
+            |> Keyword.get(project, nil)
+        end
+
+        def get_all_projects() do
+            Application.get_all_env(:exsouth)
+            |> Keyword.delete(:included_applications)
+        end
+
+        def init_pool(project) do
+            settings = get_settings(project)
+            case settings do
+                nil -> raise "No ExSouth settings for project #{project} found"
+                settings ->
+                    :ok = ExSouth.astart(:emysql)
+                    mysql = Keyword.get(settings, :mysql, :mysql)
+                    mysql_settings = Keyword.put(Application.get_env(project, mysql, []), :pool, project)
+                    SQL.init_pool mysql_settings
+            end
+        end
+
+        def execute(cmd, project) do
+            SQL.execute(cmd, [], project) |> ExSouth.get_execute_result
+        end
+
+        def dir(project) do
+            settings = get_settings(project)
+            case settings do
+                nil -> raise "No ExSouth settings for project #{project} found"
+                settings ->
+                    Keyword.get(settings, :dir, "database")
+            end
+        end
+
+        def table_name(project) do
+            settings = get_settings(project)
+            case settings do
+                nil -> raise "No ExSouth settings for project #{project} found"
+                settings ->
+                    Keyword.get(settings, :table_name, "exsouth_versions")
+            end
+        end
+
+        def get_execute_result({:ok_packet, _,_,_,_,_,_}), do: true
+        def get_execute_result({:error_packet, _, _, _, message}) do 
+            IO.puts "#{message}"
             false
-        end    
-  end
+        end
 
-  def install_south_db() do
-        SQL.query("CREATE TABLE IF NOT EXISTS #{table_name()} 
-            (id VARCHAR(4) PRIMARY KEY, name VARCHAR(255)) ENGINE=InnoDB", [])
+        def get_execute_result(list) do
+            Enum.all? list, 
+            fn({:ok_packet, _,_,_,_,_,_}) -> true;
+            ({:error_packet, _, _, _, message}) -> 
+                IO.puts "#{message}" 
+                false
+            end    
+        end
+
+        def install_south_db(project) do
+            SQL.query("CREATE TABLE IF NOT EXISTS #{table_name(project)} 
+                (id VARCHAR(4), project VARCHAR(255), name VARCHAR(255), PRIMARY KEY(project, id)) ENGINE=InnoDB", [], project)
             |> SQL.execute
-  end
+        end
 
-  def bump_version_south_db(ver, name) do
-        SQL.query("INSERT #{table_name()} (id,name) VALUES (?,?);", [ver, name])
+        def bump_version_south_db(project, ver, name) do
+            SQL.query("INSERT #{table_name(project)} (id,project,name) VALUES (?,?,?);", [ver, project, name], project)
             |> SQL.execute
-  end
+        end
 
-  def get_current_south_db() do
-      case SQL.run("SELECT id FROM #{table_name()} ORDER BY id DESC LIMIT 1", []) do
-          {:error, _} -> nil
-          [] -> ""
-          [[{:id, ver}]] -> ver
+        def get_current_south_db(project) do
+          case SQL.run("SELECT id FROM #{table_name(project)} WHERE project=? ORDER BY id DESC LIMIT 1", [project], project) do
+              {:error, _} -> nil
+              [] -> ""
+              [[{:id, ver}]] -> ver
+          end
+      end
+
+      def get_versions_south_db(project) do
+          case SQL.run("SELECT id,name FROM #{table_name(project)} ORDER BY id ASC", [], project) do
+              {:error, _} -> nil
+              [] -> nil
+              list -> list
+          end
+      end
+
+      def drop_south_db(project) do
+          SQL.execute("DROP TABLE IF EXISTS #{table_name(project)}")
       end
   end
-
-  def get_versions_south_db() do
-      case SQL.run("SELECT id,name FROM #{table_name()} ORDER BY id ASC", []) do
-          {:error, _} -> nil
-          [] -> nil
-          list -> list
-      end
-  end
-
-  def drop_south_db() do
-      SQL.execute("DROP TABLE IF EXISTS #{table_name()}")
-  end
-end
