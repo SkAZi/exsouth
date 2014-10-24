@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Db.Repair do
         ExSouth.drop_south_db(project)
         ExSouth.install_south_db(project)
 
-        File.ls!("./#{ExSouth.dir(project)}/")
+        File.ls!(ExSouth.dir(project))
             |> Enum.sort
             |> Enum.each fn(name)->
                 [iver, uname] = String.split(name, "_", parts: 2)
@@ -82,7 +82,7 @@ defmodule Mix.Tasks.Db.Install do
 
         IO.puts "Installing DB for #{project}..."
         ExSouth.init_pool(project)
-        is_ok = "./#{ExSouth.dir(project)}/0000_init.sql"
+        is_ok = "#{ExSouth.dir(project)}/0000_init.sql"
         |> File.read!
         |> ExSouth.execute(project)
 
@@ -108,6 +108,45 @@ defmodule Mix.Tasks.Db.Install do
 end
 
 
+defmodule Mix.Tasks.Db.Init do
+    use Mix.Task
+
+    @shortdoc "Инициализирует миграции для проекта"
+
+    def run([project]) do
+        project = ExSouth.project_from_name(project)
+        dir = ExSouth.dir(project)
+
+        case File.exists?(dir) do
+            true -> nil
+            false ->
+                IO.puts "Creating initial files for #{project}..."
+                File.mkdir(dir)
+        end
+
+        case File.exists?("#{dir}/0000_init.sql") do
+            true -> nil
+            false ->
+                File.touch("#{dir}/0000_init.sql")
+        end
+
+        case File.exists?("#{dir}/9999_remove.sql") do
+            true -> nil
+            false ->
+                File.touch("#{dir}/9999_remove.sql")
+        end
+
+        IO.puts "OK."
+        IO.puts ""
+    end
+
+    def run(_) do
+        IO.puts "Select project for init."
+    end
+
+end
+
+
 defmodule Mix.Tasks.Db.Update do
     use Mix.Task
 
@@ -125,10 +164,10 @@ defmodule Mix.Tasks.Db.Update do
     def run([project, ver]) do
         project = ExSouth.project_from_name(project)
 
-        filename = File.ls!("./#{ExSouth.dir(project)}/")
+        filename = File.ls!(ExSouth.dir(project))
             |> Enum.find &(String.starts_with?(&1, "#{ver}_"))
 
-        case File.exists?("./#{ExSouth.dir(project)}/#{filename}") do
+        case File.exists?("#{ExSouth.dir(project)}/#{filename}") do
             true when filename != nil ->
                 ExSouth.init_pool(project)
 
@@ -144,14 +183,14 @@ defmodule Mix.Tasks.Db.Update do
                     true ->
                         IO.puts "Updating DB for project #{project} up to v.#{ver}..."
 
-                        is_failed = File.ls!("./#{ExSouth.dir(project)}/")
+                        is_failed = File.ls!(ExSouth.dir(project))
                             |> Enum.sort
                             |> Enum.any? fn(name)->
                                 [iver, uname] = String.split(name, "_", parts: 2)
                                 uname = String.split(uname, ".", parts: 2) |> List.first
 
                                 if iver > cver and iver <= ver and iver != "9999" do
-                                    is_ok = "./#{ExSouth.dir(project)}/#{name}"
+                                    is_ok = "#{ExSouth.dir(project)}/#{name}"
                                     |> File.read!
                                     |> ExSouth.execute(project)
 
@@ -206,7 +245,7 @@ defmodule Mix.Tasks.Db.Ver do
 
         case result do
             nil ->
-                File.ls!("./#{ExSouth.dir(project)}/")
+                File.ls!(ExSouth.dir(project))
                 |> Enum.each fn(name)->
                     ver = String.split(name, "_") |> List.first
                     if ver != "9999", do: IO.puts "( ) #{String.split(name, ".") |> List.first}"
@@ -217,7 +256,7 @@ defmodule Mix.Tasks.Db.Ver do
                 Enum.map(fn([{:id, ver}, {:name, name}])-> IO.puts "(*) #{ver}_#{name}"; ver end)
                 |> Enum.reverse |> List.first
 
-                File.ls!("./#{ExSouth.dir(project)}/")
+                File.ls!(ExSouth.dir(project))
                 |> Enum.each(fn(name)->
                     ver = String.split(name, "_") |> List.first
                     if ver > cver and ver != "9999", do: IO.puts "( ) #{String.split(name, ".") |> List.first}"
@@ -250,7 +289,7 @@ defmodule Mix.Tasks.Db.Drop do
         IO.puts "Dropping DB for project #{project}..."
         ExSouth.init_pool(project)
 
-        "./#{ExSouth.dir(project)}/9999_remove.sql"
+        "#{ExSouth.dir(project)}/9999_remove.sql"
             |> File.read!
             |> ExSouth.execute(project)
 
