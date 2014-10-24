@@ -70,7 +70,7 @@ defmodule ExSouth do
             case settings do
                 nil -> raise "No ExSouth settings for project #{project} found"
                 settings ->
-                    Keyword.get(settings, :dir, "database")
+                    Keyword.get(settings, :dir, "#{:code.priv_dir project}/database/")
             end
         end
 

@@ -27,6 +27,8 @@ defmodule Mix.Tasks.Db.Repair do
                     ExSouth.bump_version_south_db(project, iver, uname)
                 end
             end
+
+        IO.puts ""
     end
 
     def run([arg]) do
@@ -92,6 +94,8 @@ defmodule Mix.Tasks.Db.Install do
         else
             IO.puts "Errors in DB installation for project #{project}."
         end
+
+        IO.puts ""
     end
 
     def run(_) do
@@ -169,6 +173,8 @@ defmodule Mix.Tasks.Db.Update do
                 IO.puts "Version for project #{project} is not found..."
 
         end
+
+        IO.puts ""
     end
 
     def run([ver]) do
@@ -217,6 +223,8 @@ defmodule Mix.Tasks.Db.Ver do
                     if ver > cver and ver != "9999", do: IO.puts "( ) #{String.split(name, ".") |> List.first}"
                 end)
         end
+
+        IO.puts ""
     end
 
     def run(_) do
@@ -247,7 +255,7 @@ defmodule Mix.Tasks.Db.Drop do
             |> ExSouth.execute(project)
 
         ExSouth.drop_south_db(project)
-        IO.puts "DB for project #{project} dropped."
+        IO.puts "DB for project #{project} dropped.\n"
     end
 
     def run(_) do
