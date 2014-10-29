@@ -1,6 +1,6 @@
 defmodule ExSouth do
 
-  @timeout 12000000
+  @timeout :infinity
 
   def astart(name) when is_atom name do
     case Application.start(name) do
