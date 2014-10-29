@@ -3,6 +3,8 @@ defmodule ExSouth do
   @timeout 1200000
 
   def astart(name) when is_atom name do
+    Application.put_env(:emysql, :default_timeout, @timeout)
+
     case Application.start(name) do
         :ok -> :ok
         {:error, {:not_started, need_name}} -> 
@@ -53,7 +55,6 @@ defmodule ExSouth do
         end
 
         def init_pool(project) do
-            Application.put_env(:emysql, :default_timeout, @timeout)
             settings = get_settings(project)
             case settings do
                 nil -> raise "No ExSouth settings for project #{project} found"
