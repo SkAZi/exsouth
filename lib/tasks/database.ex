@@ -140,7 +140,10 @@ defmodule Mix.Tasks.Db.Init do
     end
 
     def run(_) do
-        IO.puts "Select project for init."
+        ExSouth.get_all_projects()
+        |> Enum.each fn(project)->
+            ExSouth.install_south_db(project)
+        end
     end
 
 end
