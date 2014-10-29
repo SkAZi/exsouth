@@ -102,9 +102,11 @@ defmodule ExSouth do
             :error
         end
 
-        def execute_ok?(list) do
-            Enum.all? list, fn(:error)-> false; (_)-> true end
+        def execute_ok?(list) when is_list(list) do
+            Enum.all? list, &execute_ok?/1
         end
+        def execute_ok?(:error), do: false
+        def execute_ok?(_), do: true
 
         def get_field(list) when is_list(list), do: Enum.map(list, &get_field/1)
         def get_field({:field, _, _, _, _, _, name, _, _, _, _, _, _, _, _}) do
