@@ -116,7 +116,7 @@ defmodule ExSouth do
       end
 
       def get_versions_south_db(project) do
-          case SQL.run("SELECT id,name FROM #{table_name(project)} ORDER BY id ASC", [], project) do
+          case SQL.run("SELECT id,name FROM #{table_name(project)} WHERE project=? ORDER BY id ASC", [Atom.to_string(project)], project) do
               {:error, _} -> nil
               [] -> nil
               list -> list
