@@ -134,7 +134,9 @@ defmodule ExSouth do
         def get_current_south_db(project) do
           res = execute("SELECT id FROM #{table_name(project)} WHERE project=? ORDER BY id DESC LIMIT 1", [Atom.to_string(project)], project)
           case execute_ok?(res) do
-            true -> List.first(res)
+            true -> 
+                [%{"id" => ver}] = res
+                ver
             false -> nil
           end
       end
