@@ -57,7 +57,7 @@ defmodule ExSouth do
                     :ok = ExSouth.astart(:emysql)
                     mysql = Keyword.get(settings, :mysql, :mysql)
                     mysql_settings = Keyword.put(Application.get_env(project, mysql, []), :pool, project)
-                    SQL.init_pool mysql_settings
+                    SQL.init_pool Keyword.put(mysql_settings, :connect_timeout, :timer.seconds(120))
             end
         end
 

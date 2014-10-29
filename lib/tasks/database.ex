@@ -126,14 +126,12 @@ defmodule Mix.Tasks.Db.Init do
 
         case File.exists?("#{dir}/0000_init.sql") do
             true -> nil
-            false ->
-                File.touch("#{dir}/0000_init.sql")
+            false -> File.touch("#{dir}/0000_init.sql")
         end
 
         case File.exists?("#{dir}/9999_remove.sql") do
             true -> nil
-            false ->
-                File.touch("#{dir}/9999_remove.sql")
+            false -> File.touch("#{dir}/9999_remove.sql")
         end
 
         IO.puts "OK."
