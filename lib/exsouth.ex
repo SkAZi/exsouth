@@ -65,7 +65,7 @@ defmodule ExSouth do
         end
 
         def execute(cmd, args \\ [], project) do
-            :emysql.execute(cmd, args, project, @timeout) 
+            :emysql.execute(project, cmd, args, @timeout) 
                 |> get_execute_result
         end
 
