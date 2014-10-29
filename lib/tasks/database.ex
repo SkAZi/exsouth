@@ -302,9 +302,8 @@ defmodule Mix.Tasks.Db.Drop do
                 ExSouth.get_all_projects()
                 |> Enum.each fn(project)->
                     run([project])
+                    ExSouth.drop_south_db(project, :all)
                 end
-                
-                ExSouth.drop_south_db(project)
         end
     end
 
