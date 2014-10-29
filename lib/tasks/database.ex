@@ -142,7 +142,9 @@ defmodule Mix.Tasks.Db.Init do
     def run(_) do
         ExSouth.get_all_projects()
         |> Enum.each fn(project)->
+            ExSouth.init_pool(project)
             ExSouth.install_south_db(project)
+            IO.puts "Installing DB for exsouth..."
         end
     end
 
