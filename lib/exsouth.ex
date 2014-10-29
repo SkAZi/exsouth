@@ -91,7 +91,10 @@ defmodule ExSouth do
             Enum.map(list, &get_execute_result/1)
         end
         def get_execute_result({:result_packet, _, fields, data, _}) do
-            get_field(fields) |> Enum.zip(data) |> Enum.into(%{})
+            fields = get_field(fields) 
+            Enum.map(data, fn(list)->
+                Enum.zip(fields, list) |> Enum.into(%{})
+            end)
         end
         def get_execute_result({:ok_packet, _,_,_,_,_,_}), do: :ok
         def get_execute_result({:error_packet, _, _, _, message}) do 
