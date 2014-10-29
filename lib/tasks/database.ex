@@ -303,6 +303,8 @@ defmodule Mix.Tasks.Db.Drop do
                 |> Enum.each fn(project)->
                     run([project])
                 end
+                
+                ExSouth.drop_south_db(project)
         end
     end
 

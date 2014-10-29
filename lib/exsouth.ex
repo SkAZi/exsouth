@@ -123,7 +123,11 @@ defmodule ExSouth do
           end
       end
 
-      def drop_south_db(project) do
+      def drop_south_db() do
           SQL.execute("DROP TABLE IF EXISTS #{table_name(project)}", [], project)
       end
-  end
+ 
+       def drop_south_db(project) do
+          SQL.execute("DELETE FROM #{table_name(project)} WHERE project=?;", [], project)
+      end
+ end
