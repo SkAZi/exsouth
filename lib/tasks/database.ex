@@ -253,7 +253,7 @@ defmodule Mix.Tasks.Db.Ver do
 
             vers ->
                 cver = vers |>
-                Enum.map(fn(%{"id" => id, "name" => name})-> IO.puts "(*) #{ver}_#{name}"; ver end)
+                Enum.map(fn(%{"ver" => ver, "name" => name})-> IO.puts "(*) #{ver}_#{name}"; ver end)
                 |> Enum.reverse |> List.first
 
                 File.ls!(ExSouth.dir(project))
