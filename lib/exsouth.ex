@@ -59,8 +59,19 @@ defmodule ExSouth do
                 settings ->
                     :ok = ExSouth.astart(:emysql)
                     mysql = Keyword.get(settings, :mysql, :mysql)
-                    mysql_settings = Keyword.put(Application.get_env(project, mysql, []), :pool, project)
-                    SQL.init_pool Keyword.put(mysql_settings, :connect_timeout, :timer.seconds(120))
+                    mysql_settings = Application.get_env(project, mysql, [])
+
+                    args = Keyword.merge([
+                        size: 5,
+                        user: 'root',
+                        password: '',
+                        host: 'localhost',
+                        port: 3306,
+                        database: 'test',
+                        encoding: :utf8
+                    ], mysql_settings)
+
+                    :emysql.add_pool(project, Keyword.delete(args, :pool))
             end
         end
 
