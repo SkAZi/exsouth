@@ -66,11 +66,14 @@ defmodule ExSouth do
 
         def execute(cmd, args \\ [], project) do
             try do
-                :emysql.execute(project, cmd, args, @timeout) 
-                    |> get_execute_result
+                case args do
+                    [] -> :emysql.execute(project, cmd, @timeout) 
+                    args -> :emysql.execute(project, cmd, args, @timeout) 
+                end
+                |> get_execute_result
             catch
                 :exit, _ -> 
-                    IO.puts "Init migration DB firstly"
+                    IO.puts "[ERROR] Init migration DB firstly"
                     :error
             end
         end
