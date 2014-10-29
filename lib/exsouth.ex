@@ -1,6 +1,6 @@
 defmodule ExSouth do
 
-  @timeout :infinity
+  @timeout 1200000
 
   def astart(name) when is_atom name do
     case Application.start(name) do
@@ -53,6 +53,7 @@ defmodule ExSouth do
         end
 
         def init_pool(project) do
+            Application.put_env(:emysql, :default_timeout, @timeout)
             settings = get_settings(project)
             case settings do
                 nil -> raise "No ExSouth settings for project #{project} found"
@@ -83,8 +84,8 @@ defmodule ExSouth do
                 end
                 |> get_execute_result
             catch
-                :exit, _ -> 
-                    IO.puts "[ERROR] Init migration DB firstly"
+                :exit, error -> 
+                    IO.puts "[ERROR] #{error}"
                     :error
             end
         end
