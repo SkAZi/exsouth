@@ -3,8 +3,6 @@ defmodule ExSouth do
   @timeout 1200000
 
   def astart(name) when is_atom name do
-    Application.put_env(:emysql, :default_timeout, @timeout)
-
     case Application.start(name) do
         :ok -> :ok
         {:error, {:not_started, need_name}} -> 
@@ -73,7 +71,9 @@ defmodule ExSouth do
                         encoding: :utf8
                     ], mysql_settings)
 
+                    Application.put_env(:emysql, :default_timeout, @timeout, persistent: true)
                     :emysql.add_pool(project, Keyword.delete(args, :pool))
+                    execute("SELECT 1", project) # XXX: timeout workaround
             end
         end
 
