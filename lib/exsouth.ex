@@ -103,7 +103,7 @@ defmodule ExSouth do
             Enum.all? list, fn(:error)-> false; (_)-> true end
         end
 
-        def get_field(list) when is_list(list), do: Enum.map list, &get_field/1
+        def get_field(list) when is_list(list), do: Enum.map(list, &get_field/1)
         def get_field({:field, _, _, _, _, _, name, _, _, _, _, _, _, _, _}) do
             name
         end
