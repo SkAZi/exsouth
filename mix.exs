@@ -12,7 +12,7 @@ defmodule Exsouth.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [applications: [:logger, :sqlex]]
+    [applications: [:logger, :emysql]]
   end
 
   # Dependencies can be hex.pm packages:
@@ -26,7 +26,7 @@ defmodule Exsouth.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:sqlex, github: "SkAZi/sqlex"},
+      {:emysql, github: "Eonblast/Emysql"},
     ]
   end
 end

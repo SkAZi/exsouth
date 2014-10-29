@@ -83,8 +83,9 @@ defmodule Mix.Tasks.Db.Install do
         IO.puts "Installing DB for #{project}..."
         ExSouth.init_pool(project)
         is_ok = "#{ExSouth.dir(project)}/0000_init.sql"
-        |> File.read!
-        |> ExSouth.execute(project)
+            |> File.read!
+            |> ExSouth.execute(project)
+            |> ExSouth.execute_ok?
 
 
         if is_ok do
@@ -189,8 +190,9 @@ defmodule Mix.Tasks.Db.Update do
 
                                 if iver > cver and iver <= ver and iver != "9999" do
                                     is_ok = "#{ExSouth.dir(project)}/#{name}"
-                                    |> File.read!
-                                    |> ExSouth.execute(project)
+                                        |> File.read!
+                                        |> ExSouth.execute(project)
+                                        |> ExSouth.execute_ok?
 
                                     if is_ok do
                                         ExSouth.bump_version_south_db(project, iver, uname)
@@ -287,9 +289,9 @@ defmodule Mix.Tasks.Db.Drop do
         IO.puts "Dropping DB for project #{project}..."
         ExSouth.init_pool(project)
 
-        "#{ExSouth.dir(project)}/9999_remove.sql"
-            |> File.read!
+        File.read!("#{ExSouth.dir(project)}/9999_remove.sql")
             |> ExSouth.execute(project)
+            |> ExSouth.execute_ok?
 
         ExSouth.drop_south_db(project)
         IO.puts "DB for project #{project} dropped.\n"

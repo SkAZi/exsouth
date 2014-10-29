@@ -1,4 +1,7 @@
 defmodule ExSouth do
+
+  @timeout 12000000
+
   def astart(name) when is_atom name do
     case Application.start(name) do
         :ok -> :ok
@@ -61,8 +64,9 @@ defmodule ExSouth do
             end
         end
 
-        def execute(cmd, project) do
-            SQL.execute(cmd, [], project) |> ExSouth.get_execute_result
+        def execute(cmd, args \\ [], project) do
+            :emysql.execute(cmd, args, project, @timeout) 
+                |> get_execute_result
         end
 
         def dir(project) do
@@ -83,52 +87,58 @@ defmodule ExSouth do
             end
         end
 
-        def get_execute_result({:ok_packet, _,_,_,_,_,_}), do: true
+        def get_execute_result(list) when is_list(list) do
+            Enum.map(list, &get_execute_result/1)
+        end
+        def get_execute_result({:result_packet, _, fields, data, _}) do
+            get_field(fields) |> Enum.zip(data) |> Enum.into(%{})
+        end
+        def get_execute_result({:ok_packet, _,_,_,_,_,_}), do: :ok
         def get_execute_result({:error_packet, _, _, _, message}) do 
             IO.puts "#{message}"
-            false
+            :error
         end
 
-        def get_execute_result(list) do
-            Enum.all? list, 
-            fn({:ok_packet, _,_,_,_,_,_}) -> true;
-            ({:error_packet, _, _, _, message}) -> 
-                IO.puts "#{message}" 
-                false
-            end    
+        def execute_ok?(list) do
+            Enum.all? list, fn(:error)-> false; (_)-> true end
+        end
+
+        def get_field(list) when is_list(list), do: Enum.map &get_field/1
+        def get_field({:field, _, _, _, _, _, name, _, _, _, _, _, _, _, _}) do
+            name
         end
 
         def install_south_db(project) do
-            SQL.execute("CREATE TABLE IF NOT EXISTS #{table_name(project)} 
+            execute("CREATE TABLE IF NOT EXISTS #{table_name(project)} 
                 (id VARCHAR(4), project VARCHAR(255), name VARCHAR(255), PRIMARY KEY(project, id)) ENGINE=InnoDB", [], project)
         end
 
         def bump_version_south_db(project, ver, name) do
-            SQL.execute("INSERT #{table_name(project)} (id,project,name) VALUES (?,?,?);", [ver, Atom.to_string(project), name], project)
+            execute("INSERT #{table_name(project)} (id,project,name) VALUES (?,?,?);", [ver, Atom.to_string(project), name], project)
         end
 
         def get_current_south_db(project) do
-          case SQL.run("SELECT id FROM #{table_name(project)} WHERE project=? ORDER BY id DESC LIMIT 1", [Atom.to_string(project)], project) do
-              {:error, _} -> nil
-              [] -> ""
-              [[{:id, ver}]] -> ver
+          res = execute("SELECT id FROM #{table_name(project)} WHERE project=? ORDER BY id DESC LIMIT 1", [Atom.to_string(project)], project)
+          case execute_ok?(res) do
+            true -> res
+            false -> nil
           end
       end
 
       def get_versions_south_db(project) do
-          case SQL.run("SELECT id,name FROM #{table_name(project)} WHERE project=? ORDER BY id ASC", [Atom.to_string(project)], project) do
-              {:error, _} -> nil
-              [] -> nil
-              list -> list
+          res = execute("SELECT id,name FROM #{table_name(project)} WHERE project=? ORDER BY id ASC", [Atom.to_string(project)], project)
+          case execute_ok?(res) do
+            true -> res
+            false -> nil
           end
       end
 
       def drop_south_db(project) do
-          SQL.execute("DELETE FROM #{table_name(project)} WHERE project=?;", [], project)
+          execute("DELETE FROM #{table_name(project)} WHERE project=?;", [], project)
       end
  
       def drop_south_db(project, :all) do
-          SQL.execute("DROP TABLE IF EXISTS #{table_name(project)}", [], project)
+          execute("DROP TABLE IF EXISTS #{table_name(project)}", [], project)
       end
 
  end
