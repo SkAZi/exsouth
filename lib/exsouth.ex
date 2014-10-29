@@ -139,7 +139,7 @@ defmodule ExSouth do
       end
 
       def drop_south_db(project) do
-          execute("DELETE FROM #{table_name(project)} WHERE project=?;", [], project)
+          execute("DELETE FROM #{table_name(project)} WHERE project=?;", [project], project)
       end
  
       def drop_south_db(project, :all) do
